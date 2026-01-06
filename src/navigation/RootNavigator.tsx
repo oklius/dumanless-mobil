@@ -1,47 +1,45 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import HomeScreen from '../app/HomeScreen';
-import LoginScreen from '../app/LoginScreen';
-import PaywallScreen from '../app/PaywallScreen';
-import AppInsideHubScreen from '../app/AppInsideHubScreen';
 import DayScreen from '../app/DayScreen';
+import HomeScreen from '../app/HomeScreen';
+import QuizResultScreen from '../app/QuizResultScreen';
 import QuizScreen from '../app/QuizScreen';
-import ResultScreen from '../app/ResultScreen';
-import TriggerModeScreen from '../app/TriggerModeScreen';
-import MiniToolsScreen from '../app/MiniToolsScreen';
 import ProgressScreen from '../app/ProgressScreen';
+import TipsScreen from '../app/TipsScreen';
+import TriggerModeScreen from '../app/TriggerModeScreen';
+import TrophiesScreen from '../app/TrophiesScreen';
 import WelcomeScreen from '../app/WelcomeScreen';
 
 export type RootStackParamList = {
   Welcome: undefined;
-  Login: undefined;
-  Home: undefined;
   Quiz: undefined;
-  Result: { id: string };
-  Paywall: undefined;
-  AppInsideHub: undefined;
+  QuizResult: { answered?: number } | undefined;
+  Hub: undefined;
   Day: { dayNumber: number };
-  TriggerMode: undefined;
-  MiniTools: { mode?: 'game' | 'music' | 'breath' } | undefined;
+  Emergency: undefined;
   Progress: undefined;
+  Trophies: undefined;
+  Tips: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
   return (
-    <Stack.Navigator initialRouteName="Home">
-      <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="Quiz" component={QuizScreen} />
-      <Stack.Screen name="Result" component={ResultScreen} />
-      <Stack.Screen name="Paywall" component={PaywallScreen} />
-      <Stack.Screen name="AppInsideHub" component={AppInsideHubScreen} />
-      <Stack.Screen name="Day" component={DayScreen} />
-      <Stack.Screen name="TriggerMode" component={TriggerModeScreen} />
-      <Stack.Screen name="MiniTools" component={MiniToolsScreen} />
-      <Stack.Screen name="Progress" component={ProgressScreen} />
-      <Stack.Screen name="Welcome" component={WelcomeScreen} />
-      <Stack.Screen name="Login" component={LoginScreen} />
+    <Stack.Navigator initialRouteName="Welcome">
+      <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Quiz" component={QuizScreen} options={{ title: 'Quiz' }} />
+      <Stack.Screen name="QuizResult" component={QuizResultScreen} options={{ title: 'Quiz Sonucu' }} />
+      <Stack.Screen name="Hub" component={HomeScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Day" component={DayScreen} options={{ title: 'Gün' }} />
+      <Stack.Screen
+        name="Emergency"
+        component={TriggerModeScreen}
+        options={{ presentation: 'modal', headerShown: false }}
+      />
+      <Stack.Screen name="Progress" component={ProgressScreen} options={{ title: 'İlerleme' }} />
+      <Stack.Screen name="Trophies" component={TrophiesScreen} options={{ title: 'Rozetler' }} />
+      <Stack.Screen name="Tips" component={TipsScreen} options={{ title: 'Bilgi' }} />
     </Stack.Navigator>
   );
 }
