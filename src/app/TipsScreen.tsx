@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import Screen from '../components/Screen';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
@@ -22,7 +23,7 @@ export default function TipsScreen({}: Props) {
   const activeTip = TIPS[active];
 
   return (
-    <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+    <Screen>
       <Text style={styles.header}>Her gün öğren</Text>
       <Text style={styles.subheader}>Kısa, okunabilir ipuçları. Oku ve uygulamaya dön.</Text>
 
@@ -52,7 +53,7 @@ export default function TipsScreen({}: Props) {
           <Text style={styles.readerHint}>Okudun, şimdi uygulamaya dön ve küçük bir adım at.</Text>
         </View>
       </View>
-    </ScrollView>
+    </Screen>
   );
 }
 

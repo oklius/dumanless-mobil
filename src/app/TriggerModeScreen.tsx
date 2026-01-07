@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import Screen from '../components/Screen';
 import { useJourney } from '../lib/journeyContext';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { colors } from '../theme/colors';
@@ -63,7 +64,7 @@ export default function TriggerModeScreen({ navigation }: Props) {
   );
 
   return (
-    <View style={styles.container}>
+    <Screen>
       <Text style={styles.header}>Tetiklendim modu</Text>
       <Text style={styles.subheader}>60 saniye boyunca dikkatini dağıt, nefes al, sakin kal.</Text>
 
@@ -136,7 +137,7 @@ export default function TriggerModeScreen({ navigation }: Props) {
       </View>
 
       {secondsLeft > 0 ? exitRow : null}
-    </View>
+    </Screen>
   );
 }
 
@@ -150,10 +151,6 @@ function Tab({ title, active, onPress }: { title: string; active: boolean; onPre
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    padding: spacing.xl,
-    paddingTop: spacing.xxxl,
     gap: spacing.md,
   },
   header: {

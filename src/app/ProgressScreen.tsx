@@ -1,7 +1,8 @@
 import React from 'react';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
+import Screen from '../components/Screen';
 import { useJourney } from '../lib/journeyContext';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { colors } from '../theme/colors';
@@ -15,7 +16,7 @@ export default function ProgressScreen({}: Props) {
   const longestStreak = computeLongestStreak(state.completedDays);
 
   return (
-    <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+    <Screen contentStyle={styles.container}>
       <View style={styles.hero}>
         <Text style={styles.heroTitle}>Ne kadar yol geldin?</Text>
         <Text style={styles.heroBody}>
@@ -70,7 +71,7 @@ export default function ProgressScreen({}: Props) {
           </Text>
         </View>
       </View>
-    </ScrollView>
+    </Screen>
   );
 }
 

@@ -1,7 +1,7 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import DayScreen from '../app/DayScreen';
-import HomeScreen from '../app/HomeScreen';
+import LoginScreen from '../app/LoginScreen';
 import QuizResultScreen from '../app/QuizResultScreen';
 import QuizScreen from '../app/QuizScreen';
 import ProgressScreen from '../app/ProgressScreen';
@@ -9,9 +9,11 @@ import TipsScreen from '../app/TipsScreen';
 import TriggerModeScreen from '../app/TriggerModeScreen';
 import TrophiesScreen from '../app/TrophiesScreen';
 import WelcomeScreen from '../app/WelcomeScreen';
+import AppTabs from './AppTabs';
 
 export type RootStackParamList = {
   Welcome: undefined;
+  Login: undefined;
   Quiz: undefined;
   QuizResult: { answered?: number } | undefined;
   Hub: undefined;
@@ -28,9 +30,10 @@ export default function RootNavigator() {
   return (
     <Stack.Navigator initialRouteName="Welcome">
       <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Giriş Yap' }} />
       <Stack.Screen name="Quiz" component={QuizScreen} options={{ title: 'Quiz' }} />
       <Stack.Screen name="QuizResult" component={QuizResultScreen} options={{ title: 'Quiz Sonucu' }} />
-      <Stack.Screen name="Hub" component={HomeScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Hub" component={AppTabs} options={{ headerShown: false }} />
       <Stack.Screen name="Day" component={DayScreen} options={{ title: 'Gün' }} />
       <Stack.Screen
         name="Emergency"

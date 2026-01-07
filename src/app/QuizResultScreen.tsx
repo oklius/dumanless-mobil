@@ -6,6 +6,7 @@ import QuizCard from '../components/QuizCard';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'QuizResult'>;
 
@@ -42,7 +43,7 @@ const styles = StyleSheet.create({
   },
   badge: {
     alignSelf: 'flex-start',
-    backgroundColor: colors.optionBackground,
+    backgroundColor: colors.tagBackground,
     color: colors.muted,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
@@ -51,7 +52,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   title: {
-    fontSize: 24,
+    fontSize: typography.title,
     fontWeight: '700',
     color: colors.text,
     marginTop: spacing.md,
@@ -68,19 +69,20 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     flex: 1,
-    backgroundColor: colors.primary,
-    borderRadius: 14,
-    paddingVertical: spacing.md,
+    backgroundColor: colors.primaryButton,
+    borderRadius: 999,
+    paddingVertical: spacing.lg,
     alignItems: 'center',
   },
   primaryText: {
     color: '#fff',
     fontWeight: '700',
+    letterSpacing: 1,
   },
   secondaryButton: {
     flex: 1,
-    borderRadius: 14,
-    paddingVertical: spacing.md,
+    borderRadius: 999,
+    paddingVertical: spacing.lg,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.border,

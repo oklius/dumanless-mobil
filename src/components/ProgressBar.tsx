@@ -28,7 +28,7 @@ export default function ProgressBar({ current, total, percent }: ProgressBarProp
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
   labels: {
     flexDirection: 'row',
@@ -44,7 +44,8 @@ const styles = StyleSheet.create({
   },
   count: {
     fontSize: typography.progress,
-    color: colors.muted,
+    color: colors.text,
+    fontWeight: '700',
   },
   track: {
     height: 8,

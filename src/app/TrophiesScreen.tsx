@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
+import Screen from '../components/Screen';
 import { useJourney } from '../lib/journeyContext';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { colors } from '../theme/colors';
@@ -36,7 +37,7 @@ export default function TrophiesScreen({}: Props) {
   const unlockedCount = trophies.filter((t) => t.unlocked).length;
 
   return (
-    <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+    <Screen>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Rozetler</Text>
         <Text style={styles.headerSubtitle}>
@@ -55,7 +56,7 @@ export default function TrophiesScreen({}: Props) {
           </View>
         ))}
       </View>
-    </ScrollView>
+    </Screen>
   );
 }
 

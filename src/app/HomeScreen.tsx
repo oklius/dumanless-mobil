@@ -1,19 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import {
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { useNavigation } from '@react-navigation/native';
 
 import days from '../lib/days';
+import Screen from '../components/Screen';
 import { useJourney } from '../lib/journeyContext';
 import { RootStackParamList } from '../navigation/RootNavigator';
+import { AppTabParamList } from '../navigation/AppTabs';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -56,6 +52,7 @@ const dailyTasksMeta = [
 ] as const;
 
 export default function HomeScreen({ navigation }: Props) {
+  const tabNavigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
   const {
     currentDay,
     elapsed,
@@ -112,179 +109,169 @@ export default function HomeScreen({ navigation }: Props) {
     : '60 günlük akış seni bekliyor.';
 
   return (
-    <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.hero}>
-          <View style={styles.heroGlow} />
-          <Text style={styles.badge}>Dumanless • 60 gün</Text>
-          <Text style={styles.heroTitle}>{elapsed.days} gündür Dumanless’im</Text>
-          <Text style={styles.heroSubtitle}>Bugün Gün {currentDay}</Text>
-          <Text style={styles.heroBody}>{heroSubtitle}</Text>
-          <Pressable
-            style={styles.primaryButton}
-            onPress={() => navigation.navigate('Day', { dayNumber: currentDay })}
-          >
-            <Text style={styles.primaryButtonText}>Bugünkü güne git</Text>
+    <Screen>
+      <View style={styles.hero}>
+        <View style={styles.heroGlow} />
+        <Text style={styles.badge}>Dumanless • 60 gün</Text>
+        <Text style={styles.heroTitle}>{elapsed.days} gündür Dumanless’im</Text>
+        <Text style={styles.heroSubtitle}>Bugün Gün {currentDay}</Text>
+        <Text style={styles.heroBody}>{heroSubtitle}</Text>
+        <Pressable
+          style={styles.primaryButton}
+          onPress={() => navigation.navigate('Day', { dayNumber: currentDay })}
+        >
+          <Text style={styles.primaryButtonText}>Bugünkü güne git</Text>
+        </Pressable>
+        <View style={styles.heroActions}>
+          <PillButton label="Tetiklendim" icon="alert-circle" onPress={() => tabNavigation.navigate('TriggeredTab')} />
+          <PillButton
+            label="Dikkatini dağıt"
+            icon="game-controller"
+            onPress={() => tabNavigation.navigate('ToolsTab', { screen: 'ToolsMain', params: { open: 'focus' } } as any)}
+          />
+          <PillButton
+            label="Önceki günler"
+            icon="book-outline"
+            onPress={() => tabNavigation.navigate('DaysTab')}
+          />
+          <PillButton
+            label="Rahatlatıcı müzik"
+            icon="musical-notes"
+            onPress={() => tabNavigation.navigate('ToolsTab', { screen: 'ToolsMain', params: { open: 'audio' } } as any)}
+          />
+        </View>
+        <View style={styles.heroCounters}>
+          <Counter label="Gün" value={elapsed.days} />
+          <Counter label="Saat" value={elapsed.hours} />
+          <Counter label="Dakika" value={elapsed.minutes} />
+        </View>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>Kazanımlar</Text>
+        <View style={styles.statGrid}>
+          <StatCard label="Para" value={`₺${stats.moneySaved}`} hint="tasarruf" />
+          <StatCard label="Sigara" value={`${stats.cigarettesSkipped}`} hint="içilmeyen" />
+          <StatCard label="Zaman" value={`${Math.round(stats.timeSavedMinutes / 60)} saat`} hint="geri kazandın" />
+          <StatCard label="Ömür" value={`${(stats.lifeGainedMinutes / 1440).toFixed(1)} gün`} hint="beklenen artış" />
+        </View>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>Gerçek izleme</Text>
+        <View style={styles.quickGrid}>
+          <QuickCard title="Sigara isteği hissettim" color="#fde6e0" onPress={() => setActiveAction('trigger')} />
+          <QuickCard
+            title="Bir krizi yendim"
+            color="#e6f4ee"
+            onPress={() => {
+              logCrisisWin();
+              showFeedback('Kriz bitti. Dalga geçti.');
+            }}
+          />
+          <QuickCard
+            title="Sigara içtim"
+            color="#fff4d7"
+            onPress={() => {
+              logSmoked();
+              showFeedback('Dürüst kayıt edildi. Yeniden odaklan.');
+            }}
+          />
+          <QuickCard title="Anı yazıyorum" color="#eef1ff" onPress={() => setActiveAction('note')} />
+          <QuickCard
+            title="Nefes alıyorum"
+            color="#e2f7f3"
+            onPress={() => {
+              incrementBreath();
+              tabNavigation.navigate('TriggeredTab');
+            }}
+          />
+          <QuickCard title="Motivasyon al" color="#f7e9ff" onPress={() => setActiveAction('motivation')} />
+          <QuickCard
+            title="Yerine koyma yöntemlerim"
+            color="#f0f7ff"
+            onPress={() => setActiveAction('replacement')}
+          />
+          <QuickCard title="Mini oyun" color="#ffe9f1" onPress={() => tabNavigation.navigate('ToolsTab')} />
+        </View>
+      </View>
+
+      <View style={styles.card}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Haftam</Text>
+          <Text style={styles.sectionSubtitle}>Pazartesi – Pazar ruh halleri</Text>
+        </View>
+        <View style={styles.weekRow}>
+          {Object.keys(state.moods).map((dayName) => {
+            const mood = state.moods[dayName];
+            return (
+              <Pressable key={dayName} style={styles.moodBubble} onPress={() => cycleMood(dayName)}>
+                <Text style={styles.moodEmoji}>{mood?.emoji ?? '🐾'}</Text>
+                {mood ? <Text style={styles.moodTick}>✓</Text> : null}
+                <Text style={styles.moodLabel}>{dayName.slice(0, 3)}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Bugün</Text>
+          <Text style={styles.sectionSubtitle}>Kartlara dokunarak tamamla</Text>
+        </View>
+        <View style={styles.dailyTasks}>
+          {dailyTasksMeta.map((task) => (
+            <Pressable
+              key={task.key}
+              style={[styles.taskCard, { backgroundColor: task.color }, state.dailyTasks[task.key] && styles.taskCardDone]}
+              onPress={() => toggleTask(task.key)}
+            >
+              <Text style={styles.taskTitle}>{task.title}</Text>
+              <Text style={styles.taskSubtitle}>{task.subtitle}</Text>
+              <Text style={styles.taskStatus}>{state.dailyTasks[task.key] ? 'Tamamlandı' : 'Devam et'}</Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.card}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Önceki günler</Text>
+          <Text style={styles.sectionSubtitle}>Okuyabilir, tekrar tamamlayamazsın.</Text>
+        </View>
+        <View style={styles.dayChips}>
+          {previousDays.map((d) => (
+            <Pressable
+              key={d.day}
+              style={styles.dayChip}
+              onPress={() => navigation.navigate('Day', { dayNumber: d.day })}
+            >
+              <Text style={styles.dayChipTitle}>{d.title}</Text>
+              <Text style={styles.dayChipSubtitle}>Gün {d.day}</Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.footerCard}>
+        <Text style={styles.footerTitle}>İlerlemeni gör</Text>
+        <Text style={styles.footerBody}>Rozetler, istatistikler ve günlük okumalar burada.</Text>
+        <View style={styles.footerButtons}>
+          <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate('Progress')}>
+            <Text style={styles.secondaryButtonText}>İstatistik</Text>
           </Pressable>
-          <View style={styles.heroActions}>
-            <PillButton label="Tetiklendim" icon="alert-circle" onPress={() => navigation.navigate('Emergency')} />
-            <PillButton label="Dikkatini dağıt" icon="game-controller" onPress={() => navigation.navigate('Emergency')} />
-            <PillButton
-              label="Önceki günler"
-              icon="book-outline"
-              onPress={() => navigation.navigate('Day', { dayNumber: Math.max(currentDay - 1, 1) })}
-            />
-            <PillButton label="Rahatlatıcı müzik" icon="musical-notes" onPress={() => showFeedback('Müzik yakında, şimdilik derin nefes al.')} />
-          </View>
-          <View style={styles.heroCounters}>
-            <Counter label="Gün" value={elapsed.days} />
-            <Counter label="Saat" value={elapsed.hours} />
-            <Counter label="Dakika" value={elapsed.minutes} />
-          </View>
+          <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate('Trophies')}>
+            <Text style={styles.secondaryButtonText}>Rozetler</Text>
+          </Pressable>
+          <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate('Tips')}>
+            <Text style={styles.secondaryButtonText}>Bilgi</Text>
+          </Pressable>
         </View>
-
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Kazanımlar</Text>
-          <View style={styles.statGrid}>
-            <StatCard label="Para" value={`₺${stats.moneySaved}`} hint="tasarruf" />
-            <StatCard label="Sigara" value={`${stats.cigarettesSkipped}`} hint="içilmeyen" />
-            <StatCard label="Zaman" value={`${Math.round(stats.timeSavedMinutes / 60)} saat`} hint="geri kazandın" />
-            <StatCard label="Ömür" value={`${(stats.lifeGainedMinutes / 1440).toFixed(1)} gün`} hint="beklenen artış" />
-          </View>
+        <View style={styles.mascot}>
+          <Text style={styles.mascotEmoji}>🐈‍⬛</Text>
+          <Text style={styles.mascotText}>Kedimiz burada, panik yok. Adım adım gidiyoruz.</Text>
         </View>
+      </View>
 
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Gerçek izleme</Text>
-          <View style={styles.quickGrid}>
-            <QuickCard
-              title="Sigara isteği hissettim"
-              color="#fde6e0"
-              onPress={() => setActiveAction('trigger')}
-            />
-            <QuickCard
-              title="Bir krizi yendim"
-              color="#e6f4ee"
-              onPress={() => {
-                logCrisisWin();
-                showFeedback('Kriz bitti. Dalga geçti.');
-              }}
-            />
-            <QuickCard
-              title="Sigara içtim"
-              color="#fff4d7"
-              onPress={() => {
-                logSmoked();
-                showFeedback('Dürüst kayıt edildi. Yeniden odaklan.');
-              }}
-            />
-            <QuickCard
-              title="Anı yazıyorum"
-              color="#eef1ff"
-              onPress={() => setActiveAction('note')}
-            />
-            <QuickCard
-              title="Nefes alıyorum"
-              color="#e2f7f3"
-              onPress={() => {
-                incrementBreath();
-                navigation.navigate('Emergency');
-              }}
-            />
-            <QuickCard
-              title="Motivasyon al"
-              color="#f7e9ff"
-              onPress={() => setActiveAction('motivation')}
-            />
-            <QuickCard
-              title="Yerine koyma yöntemlerim"
-              color="#f0f7ff"
-              onPress={() => setActiveAction('replacement')}
-            />
-            <QuickCard
-              title="Mini oyun"
-              color="#ffe9f1"
-              onPress={() => navigation.navigate('Emergency')}
-            />
-          </View>
-        </View>
-
-        <View style={styles.card}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Haftam</Text>
-            <Text style={styles.sectionSubtitle}>Pazartesi – Pazar ruh halleri</Text>
-          </View>
-          <View style={styles.weekRow}>
-            {Object.keys(state.moods).map((dayName) => {
-              const mood = state.moods[dayName];
-              return (
-                <Pressable key={dayName} style={styles.moodBubble} onPress={() => cycleMood(dayName)}>
-                  <Text style={styles.moodEmoji}>{mood?.emoji ?? '🐾'}</Text>
-                  {mood ? <Text style={styles.moodTick}>✓</Text> : null}
-                  <Text style={styles.moodLabel}>{dayName.slice(0, 3)}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Bugün</Text>
-            <Text style={styles.sectionSubtitle}>Kartlara dokunarak tamamla</Text>
-          </View>
-          <View style={styles.dailyTasks}>
-            {dailyTasksMeta.map((task) => (
-              <Pressable
-                key={task.key}
-                style={[styles.taskCard, { backgroundColor: task.color }, state.dailyTasks[task.key] && styles.taskCardDone]}
-                onPress={() => toggleTask(task.key)}
-              >
-                <Text style={styles.taskTitle}>{task.title}</Text>
-                <Text style={styles.taskSubtitle}>{task.subtitle}</Text>
-                <Text style={styles.taskStatus}>{state.dailyTasks[task.key] ? 'Tamamlandı' : 'Devam et'}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.card}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Önceki günler</Text>
-            <Text style={styles.sectionSubtitle}>Okuyabilir, tekrar tamamlayamazsın.</Text>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayChips}>
-            {previousDays.map((d) => (
-              <Pressable
-                key={d.day}
-                style={styles.dayChip}
-                onPress={() => navigation.navigate('Day', { dayNumber: d.day })}
-              >
-                <Text style={styles.dayChipTitle}>{d.title}</Text>
-                <Text style={styles.dayChipSubtitle}>Gün {d.day}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-
-        <View style={styles.footerCard}>
-          <Text style={styles.footerTitle}>İlerlemeni gör</Text>
-          <Text style={styles.footerBody}>Rozetler, istatistikler ve günlük okumalar burada.</Text>
-          <View style={styles.footerButtons}>
-            <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate('Progress')}>
-              <Text style={styles.secondaryButtonText}>İstatistik</Text>
-            </Pressable>
-            <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate('Trophies')}>
-              <Text style={styles.secondaryButtonText}>Rozetler</Text>
-            </Pressable>
-            <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate('Tips')}>
-              <Text style={styles.secondaryButtonText}>Bilgi</Text>
-            </Pressable>
-          </View>
-          <View style={styles.mascot}>
-            <Text style={styles.mascotEmoji}>🐈‍⬛</Text>
-            <Text style={styles.mascotText}>Kedimiz burada, panik yok. Adım adım gidiyoruz.</Text>
-          </View>
-        </View>
-
-        {feedback ? <View style={styles.feedback}><Text style={styles.feedbackText}>{feedback}</Text></View> : null}
-      </ScrollView>
+      {feedback ? <View style={styles.feedback}><Text style={styles.feedbackText}>{feedback}</Text></View> : null}
 
       <ActionModal visible={activeAction === 'trigger'} onClose={() => setActiveAction(null)}>
         <Text style={styles.modalTitle}>Sigara isteği formu</Text>
@@ -371,7 +358,7 @@ export default function HomeScreen({ navigation }: Props) {
           <ReplacementItem title="Kısa yürüyüş" detail="7 dakikalık tempo yürüyüşü isteği dağıtır." />
         </View>
       </ActionModal>
-    </View>
+    </Screen>
   );
 }
 

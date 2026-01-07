@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import Screen from '../components/Screen';
 import days from '../lib/days';
 import { useJourney } from '../lib/journeyContext';
 import { RootStackParamList } from '../navigation/RootNavigator';
@@ -54,7 +55,7 @@ export default function DayScreen({ route, navigation }: Props) {
         : 'Görev bitince otomatik Hub’a döneceksin.';
 
   return (
-    <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+    <Screen contentStyle={styles.container}>
       <View style={styles.badgeRow}>
         <Text style={styles.badge}>Gün {dayNumber}</Text>
         <Text style={[styles.badge, styles.badgeGhost]}>{dayContent.title}</Text>
@@ -100,7 +101,7 @@ export default function DayScreen({ route, navigation }: Props) {
           <Text style={styles.secondaryGhostText}>Tetiklendim moduna geç</Text>
         </Pressable>
       </View>
-    </ScrollView>
+    </Screen>
   );
 }
 

@@ -1,66 +1,104 @@
-import { useMemo, useState } from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Image, ImageResizeMode, ImageStyle, StyleProp, StyleSheet, View } from 'react-native';
 import { SvgUri } from 'react-native-svg';
 
 import { colors } from '../theme/colors';
+import { resolveAssetUri } from '../lib/resolveAssetUri';
 
 type RemoteIllustrationProps = {
-  uri: string;
+  uri?: string;
   width?: number;
   height?: number;
   borderRadius?: number;
-  context?: string;
+  style?: StyleProp<ImageStyle>;
+  resizeMode?: ImageResizeMode;
 };
 
+// Render remote raster/SVG assets directly from the web (no bundling), falling back to a subtle placeholder on errors.
 export default function RemoteIllustration({
-  uri,
-  width = 128,
-  height = 128,
+  uri: rawUri,
+  width = 160,
+  height = 160,
   borderRadius = 16,
-  context,
+  style,
+  resizeMode = 'contain',
 }: RemoteIllustrationProps) {
   const [hasError, setHasError] = useState(false);
-  const isSvg = useMemo(() => uri.toLowerCase().endsWith('.svg'), [uri]);
+  const [isSvg, setIsSvg] = useState(false);
+  const resolvedUri = useMemo(() => resolveAssetUri(rawUri ?? ''), [rawUri]);
 
-  if (hasError) {
-    return (
-      <View
-        style={[
-          styles.placeholder,
-          { width, height, borderRadius },
-        ]}
-      />
-    );
+  useEffect(() => {
+    setHasError(false);
+    if (!resolvedUri) return;
+    if (resolvedUri.toLowerCase().includes('.svg')) {
+      setIsSvg(true);
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+
+    fetch(resolvedUri, { method: 'HEAD', signal: controller.signal })
+      .then((res) => {
+        if (cancelled) return;
+        const contentType = res.headers.get('content-type') ?? '';
+        if (contentType.includes('svg')) {
+          setIsSvg(true);
+        } else {
+          setIsSvg(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setIsSvg(false);
+      });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [resolvedUri]);
+
+  if (!resolvedUri || hasError) {
+    return <View style={[styles.placeholder, { width, height, borderRadius }, style]} />;
   }
 
   if (isSvg) {
     return (
-      <SvgUri
-        uri={uri}
-        width={width}
-        height={height}
-        onError={() => {
-          setHasError(true);
-          console.warn(`Failed to load SVG${context ? ` (${context})` : ''}: ${uri}`);
-        }}
-      />
+      <View
+        style={[styles.svgWrapper, { width, height, borderRadius }, style]}
+        accessible
+        accessibilityRole="image"
+      >
+        <SvgUri
+          uri={resolvedUri}
+          width="100%"
+          height="100%"
+          onError={() => {
+            setHasError(true);
+            console.warn(`Failed to load SVG: ${resolvedUri}`);
+          }}
+        />
+      </View>
     );
   }
 
   return (
     <Image
-      source={{ uri }}
-      style={{ width, height, borderRadius }}
-      resizeMode="contain"
+      source={{ uri: resolvedUri }}
+      style={[{ width, height, borderRadius }, style]}
+      resizeMode={resizeMode}
       onError={() => {
         setHasError(true);
-        console.warn(`Failed to load image${context ? ` (${context})` : ''}: ${uri}`);
+        console.warn(`Failed to load image: ${resolvedUri}`);
       }}
     />
   );
 }
 
 const styles = StyleSheet.create({
+  svgWrapper: {
+    overflow: 'hidden',
+  },
   placeholder: {
     backgroundColor: colors.progressTrack,
     borderColor: colors.border,

@@ -7,4 +7,6 @@ export const spacing = {
   xxl: 24,
   xxxl: 28,
   huge: 32,
+  xxxxl: 36,
+  mega: 40,
 };
