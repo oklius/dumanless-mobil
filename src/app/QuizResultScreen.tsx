@@ -4,7 +4,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import QuizCard from '../components/QuizCard';
+import RemoteIllustration from '../components/RemoteIllustration';
 import TextField from '../components/TextField';
+import { resolveAssetUri } from '../lib/resolveAssetUri';
 import { getSupabase } from '../lib/supabase';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { colors } from '../theme/colors';
@@ -16,6 +18,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'QuizResult'>;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function QuizResultScreen({ navigation, route }: Props) {
+  const sparkUri = resolveAssetUri('/illustrations/spark.svg');
   const answers = route.params?.answers ?? {};
   const [name, setName] = useState('');
   const [surname, setSurname] = useState('');
@@ -82,7 +85,58 @@ export default function QuizResultScreen({ navigation, route }: Props) {
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
       <QuizCard>
-        <Text style={styles.title}>Quiz tamamlandı</Text>
+        <View style={styles.header}>
+          <View style={styles.illustrationWrap}>
+            {sparkUri ? (
+              <RemoteIllustration uri={sparkUri} width={140} height={140} borderRadius={28} />
+            ) : null}
+          </View>
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>Analiz</Text>
+          </View>
+          <Text style={styles.title}>Sigarayı bırakma profilin hazır</Text>
+          <Text style={styles.subtitle}>
+            Yanıtlarını analiz ettik ve sana özel bırakma planını hazırladık. Başlamaya hazırsın.
+          </Text>
+        </View>
+
+        <View style={styles.profileCard}>
+          <Text style={styles.profileLabel}>Sigarayı bırakma profilin</Text>
+          <View style={styles.profileChip}>
+            <Text style={styles.profileChipText}>Haz Arayan</Text>
+          </View>
+          <View style={styles.bulletList}>
+            <View style={styles.bulletRow}>
+              <View style={styles.bulletDot} />
+              <Text style={styles.bulletText}>
+                Tetikleyicilerin çoğu otomatik alışkanlık döngülerinden geliyor.
+              </Text>
+            </View>
+            <View style={styles.bulletRow}>
+              <View style={styles.bulletDot} />
+              <Text style={styles.bulletText}>
+                İstek dalgası 3–7 dakika sürüyor; doğru teknikle kontrol edilebilir.
+              </Text>
+            </View>
+            <View style={styles.bulletRow}>
+              <View style={styles.bulletDot} />
+              <Text style={styles.bulletText}>
+                Kısa ödüller yerine kalıcı motivasyon kurmak kritik.
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.disclaimer}>
+          <Text style={styles.disclaimerText}>
+            Bu analiz bir teşhis değildir; alışkanlık örüntülerini anlamana yardımcı olur.
+          </Text>
+        </View>
+
+        <Text style={styles.formIntro}>
+          Sonuçlarını kaydetmek ve planını başlatmak için bilgilerini gir.
+        </Text>
+
         <View style={styles.form}>
           <TextField
             value={name}
@@ -122,11 +176,105 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.huge,
     backgroundColor: colors.background,
   },
+  header: {
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  illustrationWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badge: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: 999,
+    backgroundColor: colors.tagBackground,
+  },
+  badgeText: {
+    fontSize: typography.label,
+    fontWeight: '700',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    color: colors.muted,
+  },
   title: {
     fontSize: typography.title,
     fontWeight: '700',
     color: colors.text,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: typography.subtitle,
+    color: colors.muted,
+    lineHeight: 22,
+    textAlign: 'center',
+  },
+  profileCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.tagBackground,
+    padding: spacing.lg,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  profileLabel: {
+    fontSize: typography.label,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    color: colors.muted,
+    fontWeight: '700',
+  },
+  profileChip: {
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    backgroundColor: colors.accent,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  profileChipText: {
+    color: '#ffffff',
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  bulletList: {
+    gap: spacing.sm,
+  },
+  bulletRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+  bulletDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 6,
+    marginTop: 8,
+    backgroundColor: colors.accent,
+  },
+  bulletText: {
+    flex: 1,
+    fontSize: typography.subtitle,
+    color: colors.text,
+    lineHeight: 22,
+  },
+  disclaimer: {
+    paddingHorizontal: spacing.sm,
     marginBottom: spacing.lg,
+  },
+  disclaimerText: {
+    fontSize: typography.label,
+    color: colors.muted,
+    lineHeight: 18,
+    textAlign: 'center',
+  },
+  formIntro: {
+    fontSize: typography.subtitle,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: spacing.md,
+    textAlign: 'center',
   },
   form: {
     gap: spacing.md,

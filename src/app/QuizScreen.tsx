@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
@@ -37,6 +37,9 @@ export default function QuizScreen({ navigation }: Props) {
   const [answers, setAnswers] = useState<Answers>({});
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [analysisMessageIndex, setAnalysisMessageIndex] = useState(0);
+  const autoAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const advanceLockedRef = useRef(false);
+  const analysisForwardedRef = useRef(false);
 
   const total = STEPS.length;
   const step = STEPS[index];
@@ -48,6 +51,16 @@ export default function QuizScreen({ navigation }: Props) {
       : undefined;
 
   const isLast = index === total - 1;
+  const isAnalyzing = step.id === 's40';
+
+  useEffect(() => {
+    advanceLockedRef.current = false;
+    analysisForwardedRef.current = false;
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+  }, [step.id]);
 
   useEffect(() => {
     if (step.id !== 's40') {
@@ -74,10 +87,24 @@ export default function QuizScreen({ navigation }: Props) {
     };
   }, [step.id]);
 
+  useEffect(() => {
+    if (!isAnalyzing || analysisProgress < 100 || analysisForwardedRef.current) return;
+    analysisForwardedRef.current = true;
+    goNext();
+  }, [analysisProgress, isAnalyzing]);
+
+  const scheduleAutoAdvance = () => {
+    if (autoAdvanceTimerRef.current || advanceLockedRef.current) return;
+    autoAdvanceTimerRef.current = setTimeout(() => {
+      goNext();
+    }, 200);
+  };
+
   const handleSelect = (optionId: string) => {
     if (step.type !== 'question') return;
     if (step.kind === 'single') {
       setAnswers((prev) => ({ ...prev, [step.id]: [optionId] }));
+      scheduleAutoAdvance();
       return;
     }
 
@@ -90,6 +117,12 @@ export default function QuizScreen({ navigation }: Props) {
   };
 
   const goNext = () => {
+    if (advanceLockedRef.current) return;
+    advanceLockedRef.current = true;
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
     if (isLast) {
       navigation.navigate('QuizResult', {
         answered: Object.keys(answers).length,
@@ -101,6 +134,10 @@ export default function QuizScreen({ navigation }: Props) {
   };
 
   const goBack = () => {
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
     setIndex((prev) => Math.max(prev - 1, 0));
   };
 
@@ -153,13 +190,15 @@ export default function QuizScreen({ navigation }: Props) {
           >
             <Text style={styles.secondaryText}>Geri</Text>
           </Pressable>
-          <Pressable
-            style={[styles.primaryButton, disableNext && styles.primaryDisabled]}
-            onPress={goNext}
-            disabled={disableNext}
-          >
-            <Text style={styles.primaryText}>{isLast ? "Quiz'i Bitir" : 'İleri →'}</Text>
-          </Pressable>
+          {!isAnalyzing && !(step.type === 'question' && step.kind === 'single') ? (
+            <Pressable
+              style={[styles.primaryButton, disableNext && styles.primaryDisabled]}
+              onPress={goNext}
+              disabled={disableNext}
+            >
+              <Text style={styles.primaryText}>{isLast ? "Quiz'i Bitir" : 'İleri →'}</Text>
+            </Pressable>
+          ) : null}
         </View>
       </QuizCard>
     </ScrollView>
@@ -219,7 +258,7 @@ function AgeGrid({
             ]}
           >
             {uri ? (
-              <RemoteIllustration uri={uri} width={120} height={120} borderRadius={16} />
+              <RemoteIllustration uri={uri} width={104} height={104} borderRadius={16} />
             ) : null}
             <View style={[styles.ageLabel, isSelected && styles.ageLabelSelected]}>
               <Text style={[styles.ageLabelText, isSelected && styles.ageLabelTextSelected]}>
@@ -243,14 +282,17 @@ function InfoStep({
   analysisMessageIndex: number;
 }) {
   const imageUri = useMemo(() => resolveAssetUri(step.image), [step.image]);
+  const illustration = imageUri ? (
+    <View style={styles.illustrationWrap}>
+      <RemoteIllustration uri={imageUri} width={200} height={200} borderRadius={24} />
+    </View>
+  ) : null;
 
   if (step.id === 's5') {
     const [first, second, third] = step.body;
     return (
       <View style={styles.infoBlock}>
-        {imageUri ? (
-          <RemoteIllustration uri={imageUri} width={200} height={200} borderRadius={24} />
-        ) : null}
+        {illustration}
         <View style={styles.infoList}>
           {[first, second].filter(Boolean).map((line) => (
             <View key={line} style={styles.infoRow}>
@@ -272,9 +314,7 @@ function InfoStep({
     const [headline, ...rest] = step.body;
     return (
       <View style={styles.infoBlock}>
-        {imageUri ? (
-          <RemoteIllustration uri={imageUri} width={200} height={200} borderRadius={24} />
-        ) : null}
+        {illustration}
         {headline ? (
           <View style={styles.warningCard}>
             <Text style={styles.warningHeadline}>{headline}</Text>
@@ -295,9 +335,7 @@ function InfoStep({
   if (step.id === 's18') {
     return (
       <View style={styles.infoBlock}>
-        {imageUri ? (
-          <RemoteIllustration uri={imageUri} width={200} height={200} borderRadius={24} />
-        ) : null}
+        {illustration}
         <View style={styles.successCard}>
           {step.body.map((line) => (
             <Text key={line} style={styles.successText}>
@@ -316,9 +354,7 @@ function InfoStep({
     });
     return (
       <View style={styles.infoBlock}>
-        {imageUri ? (
-          <RemoteIllustration uri={imageUri} width={200} height={200} borderRadius={24} />
-        ) : null}
+        {illustration}
         <View style={styles.cardList}>
           {entries.map((entry) => (
             <View key={entry.label} style={styles.borderCard}>
@@ -334,9 +370,7 @@ function InfoStep({
   if (step.id === 's28') {
     return (
       <View style={styles.infoBlock}>
-        {imageUri ? (
-          <RemoteIllustration uri={imageUri} width={200} height={200} borderRadius={24} />
-        ) : null}
+        {illustration}
         <View style={styles.cardList}>
           <View style={styles.warningCard}>
             <Text style={styles.subLabel}>Ortalama deneme</Text>
@@ -360,9 +394,7 @@ function InfoStep({
     });
     return (
       <View style={styles.infoBlock}>
-        {imageUri ? (
-          <RemoteIllustration uri={imageUri} width={200} height={200} borderRadius={24} />
-        ) : null}
+        {illustration}
         <View style={styles.cardList}>
           {entries.map((entry) => (
             <View key={entry.label} style={styles.borderCard}>
@@ -416,9 +448,7 @@ function InfoStep({
 
   return (
     <View style={styles.infoBlock}>
-      {imageUri ? (
-        <RemoteIllustration uri={imageUri} width={200} height={200} borderRadius={24} />
-      ) : null}
+      {illustration}
       <View style={styles.infoList}>
         {step.body.map((line) => (
           <View key={line} style={styles.infoRow}>
@@ -506,16 +536,18 @@ const styles = StyleSheet.create({
   ageGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.md,
+    gap: spacing.sm,
     justifyContent: 'space-between',
   },
   ageCard: {
     flex: 1,
     minWidth: '48%',
+    maxWidth: '48%',
+    flexBasis: '48%',
     borderRadius: 24,
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.md,
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
     borderWidth: 1,
     backgroundColor: colors.panel,
   },
@@ -531,8 +563,8 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   ageLabel: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
     borderRadius: 14,
     backgroundColor: colors.tagBackground,
   },
@@ -546,6 +578,11 @@ const styles = StyleSheet.create({
   },
   ageLabelTextSelected: {
     color: '#ffffff',
+  },
+  illustrationWrap: {
+    alignSelf: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   infoBlock: {
     gap: spacing.md,

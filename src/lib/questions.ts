@@ -75,6 +75,7 @@ const RAW_STEPS: RawStep[] = [
   {
     id: 's5',
     type: 'info',
+    title: 'Dopamin',
     image: '/illustrations/brain.svg',
     body: [
       'İnsanlar dopamin salgısı tetiklendiği için sigarayı tekrar eder; beyin bu ödülü ister.',
@@ -137,7 +138,7 @@ const RAW_STEPS: RawStep[] = [
   {
     id: 's11',
     type: 'info',
-    title: 'Eğitim',
+    title: 'Yanılsama',
     image: '/illustrations/alert.svg',
     body: [
       'Şehir efsanesi: Sigara içmek rahatlatıcıdır. YANLIŞ',
@@ -219,6 +220,7 @@ const RAW_STEPS: RawStep[] = [
   {
     id: 's18',
     type: 'info',
+    title: 'Motivasyon',
     image: '/illustrations/spark.svg',
     body: [
       'Tamam. Başarının en önemli faktörü gerçekten değişmek istemen.',
