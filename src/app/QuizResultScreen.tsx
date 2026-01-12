@@ -72,7 +72,7 @@ export default function QuizResultScreen({ navigation, route }: Props) {
 
       navigation.reset({
         index: 0,
-        routes: [{ name: 'Hub' }],
+        routes: [{ name: 'Gate' }],
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Bir hata oluştu.';

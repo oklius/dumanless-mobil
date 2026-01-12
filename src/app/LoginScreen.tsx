@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
+import { getSupabase } from '../lib/supabase';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
@@ -9,12 +10,88 @@ import { typography } from '../theme/typography';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export default function LoginScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
+  const [codeSent, setCodeSent] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
 
-  const handleSubmit = () => {
-    Alert.alert('Yakında', 'Giriş özelliği yakında eklenecek.');
+  const handleSendCode = async () => {
+    if (isSending) return;
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!EMAIL_REGEX.test(normalizedEmail)) {
+      Alert.alert('Hata', 'Geçerli bir e-posta adresi gir.');
+      return;
+    }
+
+    const client = getSupabase();
+    if (!client) {
+      Alert.alert('Hata', 'Uygulama yapılandırması eksik. Lütfen tekrar deneyin.');
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      const { error } = await client.auth.signInWithOtp({
+        email: normalizedEmail,
+        options: { shouldCreateUser: true },
+      });
+      if (error) {
+        throw new Error(error.message);
+      }
+      setCodeSent(true);
+      Alert.alert('Kod gönderildi', 'E-posta adresini kontrol et.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Kod gönderilemedi.';
+      Alert.alert('Hata', message);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    if (isVerifying) return;
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!EMAIL_REGEX.test(normalizedEmail)) {
+      Alert.alert('Hata', 'Geçerli bir e-posta adresi gir.');
+      return;
+    }
+    const normalizedCode = code.trim();
+    if (normalizedCode.length < 6) {
+      Alert.alert('Hata', 'Kod en az 6 haneli olmalı.');
+      return;
+    }
+
+    const client = getSupabase();
+    if (!client) {
+      Alert.alert('Hata', 'Uygulama yapılandırması eksik. Lütfen tekrar deneyin.');
+      return;
+    }
+
+    setIsVerifying(true);
+    try {
+      const { error } = await client.auth.verifyOtp({
+        email: normalizedEmail,
+        token: normalizedCode,
+        type: 'email',
+      });
+      if (error) {
+        throw new Error(error.message);
+      }
+      Alert.alert('Başarılı', 'Giriş yapıldı.');
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Gate' }],
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Giriş başarısız.';
+      Alert.alert('Hata', message);
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   return (
@@ -31,17 +108,35 @@ export default function LoginScreen({ navigation }: Props) {
             autoCapitalize="none"
             autoCorrect={false}
           />
-          <Text style={styles.label}>Şifre</Text>
-          <TextInput
-            style={styles.input}
-            value={password}
-            onChangeText={setPassword}
-            placeholder="••••••••"
-            secureTextEntry
-          />
-          <Pressable style={styles.submit} onPress={handleSubmit}>
-            <Text style={styles.submitText}>Giriş Yap</Text>
+          {codeSent ? (
+            <>
+              <Text style={styles.label}>Kod</Text>
+              <TextInput
+                style={styles.input}
+                value={code}
+                onChangeText={setCode}
+                placeholder="6 haneli kod"
+                keyboardType="number-pad"
+                autoCapitalize="none"
+                autoCorrect={false}
+                maxLength={8}
+              />
+            </>
+          ) : null}
+          <Pressable
+            style={styles.submit}
+            onPress={codeSent ? handleVerifyCode : handleSendCode}
+            disabled={isSending || isVerifying}
+          >
+            <Text style={styles.submitText}>
+              {codeSent ? (isVerifying ? 'Giriş yapılıyor...' : 'Giriş yap') : isSending ? 'Gönderiliyor...' : 'Kod gönder'}
+            </Text>
           </Pressable>
+          {codeSent ? (
+            <Pressable style={styles.resend} onPress={handleSendCode} disabled={isSending}>
+              <Text style={styles.resendText}>{isSending ? 'Gönderiliyor...' : 'Kodu tekrar gönder'}</Text>
+            </Pressable>
+          ) : null}
           <Pressable style={styles.secondary} onPress={() => navigation.navigate('Quiz')}>
             <Text style={styles.secondaryText}>Üye değilim, quize geç</Text>
           </Pressable>
@@ -98,6 +193,15 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: '700',
     letterSpacing: 1,
+  },
+  resend: {
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+  },
+  resendText: {
+    color: colors.accent,
+    fontSize: typography.body - 1,
+    textDecorationLine: 'underline',
   },
   secondary: {
     alignItems: 'center',

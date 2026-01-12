@@ -1,5 +1,6 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import AccessGateScreen from '../app/AccessGateScreen';
 import DayScreen from '../app/DayScreen';
 import LoginScreen from '../app/LoginScreen';
 import QuizResultScreen from '../app/QuizResultScreen';
@@ -12,6 +13,7 @@ import WelcomeScreen from '../app/WelcomeScreen';
 import AppTabs from './AppTabs';
 
 export type RootStackParamList = {
+  Gate: undefined;
   Welcome: undefined;
   Login: undefined;
   Quiz: undefined;
@@ -28,7 +30,8 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
   return (
-    <Stack.Navigator initialRouteName="Welcome">
+    <Stack.Navigator initialRouteName="Gate">
+      <Stack.Screen name="Gate" component={AccessGateScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Giriş Yap' }} />
       <Stack.Screen name="Quiz" component={QuizScreen} options={{ title: 'Quiz' }} />
