@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, Linking, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 
 import Screen from '../components/Screen';
 import { colors } from '../theme/colors';
@@ -20,6 +23,7 @@ const defaultPrefs: Prefs = {
 };
 
 export default function ProfileScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const [prefs, setPrefs] = useState<Prefs>(defaultPrefs);
   const [hydrated, setHydrated] = useState(false);
 
@@ -123,11 +127,26 @@ export default function ProfileScreen() {
 
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Yasal</Text>
-        <Pressable style={styles.linkRow}>
+        <Pressable
+          style={styles.linkRow}
+          onPress={() => navigation.navigate('LegalContent', { title: 'Gizlilik Politikası', contentKey: 'privacy' })}
+        >
           <Text style={styles.link}>Gizlilik Politikası</Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.muted} />
         </Pressable>
-        <Pressable style={styles.linkRow}>
+        <Pressable
+          style={styles.linkRow}
+          onPress={() => navigation.navigate('LegalContent', { title: 'Kullanım Koşulları', contentKey: 'terms' })}
+        >
           <Text style={styles.link}>Kullanım Koşulları</Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+        </Pressable>
+        <Pressable
+          style={styles.linkRow}
+          onPress={() => navigation.navigate('LegalContent', { title: 'İade Politikası', contentKey: 'refund' })}
+        >
+          <Text style={styles.link}>İade Politikası</Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.muted} />
         </Pressable>
       </View>
     </Screen>
@@ -258,6 +277,9 @@ const styles = StyleSheet.create({
   },
   linkRow: {
     paddingVertical: spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   primary: {
     backgroundColor: colors.primaryButton,

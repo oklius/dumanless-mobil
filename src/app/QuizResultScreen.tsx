@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import QuizCard from '../components/QuizCard';
+import TextField from '../components/TextField';
+import { getSupabase } from '../lib/supabase';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
@@ -10,26 +13,104 @@ import { typography } from '../theme/typography';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'QuizResult'>;
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export default function QuizResultScreen({ navigation, route }: Props) {
-  const answered = route.params?.answered ?? 0;
+  const answers = route.params?.answers ?? {};
+  const [name, setName] = useState('');
+  const [surname, setSurname] = useState('');
+  const [email, setEmail] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
+
+    const trimmedName = name.trim();
+    if (trimmedName.length < 2) {
+      Alert.alert('Hata', 'Ad en az 2 karakter olmalı.');
+      return;
+    }
+
+    const trimmedSurname = surname.trim();
+    if (trimmedSurname.length < 2) {
+      Alert.alert('Hata', 'Soyad en az 2 karakter olmalı.');
+      return;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!EMAIL_REGEX.test(normalizedEmail)) {
+      Alert.alert('Hata', 'Geçerli bir e-posta adresi gir.');
+      return;
+    }
+
+    const client = getSupabase();
+    if (!client) {
+      Alert.alert('Hata', 'Uygulama yapılandırması eksik. Lütfen tekrar deneyin.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const { error } = await client.from('quiz_submissions').insert({
+        name: trimmedName,
+        surname: trimmedSurname,
+        email: normalizedEmail,
+        answers,
+        source: 'mobile',
+        quiz_version: 'v1',
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      await AsyncStorage.setItem('onboardingComplete', 'true');
+      await AsyncStorage.setItem('leadEmail', normalizedEmail);
+
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Hub' }],
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Bir hata oluştu.';
+      Alert.alert('Hata', message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
       <QuizCard>
-        <Text style={styles.badge}>Ön analiz</Text>
         <Text style={styles.title}>Quiz tamamlandı</Text>
-        <Text style={styles.body}>
-          {answered} adım yanıtlandı. Şimdi 60 günlük Hub’ı açalım. Tetikleyici haritalama, nefes ve günlük
-          görevler seni bekliyor.
-        </Text>
-        <View style={styles.actions}>
-          <Pressable style={styles.primaryButton} onPress={() => navigation.navigate('Hub')}>
-            <Text style={styles.primaryText}>Uygulamaya devam et</Text>
-          </Pressable>
-          <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate('Welcome')}>
-            <Text style={styles.secondaryText}>Başa dön</Text>
-          </Pressable>
+        <View style={styles.form}>
+          <TextField
+            value={name}
+            placeholder="Ad"
+            onChangeText={setName}
+            autoCapitalize="words"
+          />
+          <TextField
+            value={surname}
+            placeholder="Soyad"
+            onChangeText={setSurname}
+            autoCapitalize="words"
+          />
+          <TextField
+            value={email}
+            placeholder="E-posta"
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
         </View>
+        <Pressable
+          style={[styles.primaryButton, isSubmitting && styles.primaryDisabled]}
+          onPress={handleSubmit}
+          disabled={isSubmitting}
+        >
+          <Text style={styles.primaryText}>{isSubmitting ? 'Gönderiliyor...' : 'Devam et'}</Text>
+        </Pressable>
       </QuizCard>
     </ScrollView>
   );
@@ -41,55 +122,28 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.huge,
     backgroundColor: colors.background,
   },
-  badge: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.tagBackground,
-    color: colors.muted,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: 999,
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
   title: {
     fontSize: typography.title,
     fontWeight: '700',
     color: colors.text,
-    marginTop: spacing.md,
+    marginBottom: spacing.lg,
   },
-  body: {
-    color: colors.muted,
-    lineHeight: 22,
-    marginTop: spacing.sm,
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.xl,
+  form: {
+    gap: spacing.md,
+    marginBottom: spacing.xl,
   },
   primaryButton: {
-    flex: 1,
     backgroundColor: colors.primaryButton,
     borderRadius: 999,
     paddingVertical: spacing.lg,
     alignItems: 'center',
   },
+  primaryDisabled: {
+    opacity: 0.6,
+  },
   primaryText: {
     color: '#fff',
     fontWeight: '700',
     letterSpacing: 1,
-  },
-  secondaryButton: {
-    flex: 1,
-    borderRadius: 999,
-    paddingVertical: spacing.lg,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.panel,
-  },
-  secondaryText: {
-    color: colors.text,
-    fontWeight: '600',
   },
 });

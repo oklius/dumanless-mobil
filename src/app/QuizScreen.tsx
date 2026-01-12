@@ -91,7 +91,10 @@ export default function QuizScreen({ navigation }: Props) {
 
   const goNext = () => {
     if (isLast) {
-      navigation.navigate('QuizResult', { answered: Object.keys(answers).length });
+      navigation.navigate('QuizResult', {
+        answered: Object.keys(answers).length,
+        answers,
+      });
       return;
     }
     setIndex((prev) => Math.min(prev + 1, total - 1));

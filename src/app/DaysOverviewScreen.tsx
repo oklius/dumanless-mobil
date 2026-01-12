@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -21,7 +21,7 @@ export default function DaysOverviewScreen() {
   const { currentDay, state } = useJourney();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerValue, setPickerValue] = useState(String(currentDay));
-  const listRef = useRef<FlatList<DayItem>>(null);
+  const listRef = React.useRef<FlatList<DayItem>>(null);
 
   const progressLabel = `${currentDay} / ${days.length}`;
   const progressPercent = Math.round((currentDay / days.length) * 100);

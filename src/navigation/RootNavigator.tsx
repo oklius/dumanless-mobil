@@ -15,7 +15,7 @@ export type RootStackParamList = {
   Welcome: undefined;
   Login: undefined;
   Quiz: undefined;
-  QuizResult: { answered?: number } | undefined;
+  QuizResult: { answered?: number; answers?: Record<string, string[]> } | undefined;
   Hub: undefined;
   Day: { dayNumber: number };
   Emergency: undefined;

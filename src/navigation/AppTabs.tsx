@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import BreathingSessionScreen from '../app/BreathingSessionScreen';
 import DaysOverviewScreen from '../app/DaysOverviewScreen';
 import HomeScreen from '../app/HomeScreen';
+import LegalContentScreen from '../app/LegalContentScreen';
 import ProfileScreen from '../app/ProfileScreen';
 import ToolsScreen from '../app/ToolsScreen';
 import TriggeredScreen from '../app/TriggeredScreen';
@@ -81,6 +82,7 @@ function ProfileStackScreen() {
   return (
     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
       <ProfileStack.Screen name="ProfileHome" component={ProfileScreen} />
+      <ProfileStack.Screen name="LegalContent" component={LegalContentScreen} />
     </ProfileStack.Navigator>
   );
 }
