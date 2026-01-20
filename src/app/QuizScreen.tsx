@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -141,7 +141,7 @@ export default function QuizScreen({ navigation }: Props) {
     setIndex((prev) => Math.max(prev - 1, 0));
   };
 
-  const disableNext = step.type === 'question' && step.kind === 'single' && selected.length === 0;
+  const disableNext = step.type === 'question' && selected.length === 0;
 
   return (
     <ScrollView
@@ -193,7 +193,13 @@ export default function QuizScreen({ navigation }: Props) {
           {!isAnalyzing && !(step.type === 'question' && step.kind === 'single') ? (
             <Pressable
               style={[styles.primaryButton, disableNext && styles.primaryDisabled]}
-              onPress={goNext}
+              onPress={() => {
+                if (disableNext) {
+                  Alert.alert('Hata', 'Lütfen bir seçenek seçin.');
+                  return;
+                }
+                goNext();
+              }}
               disabled={disableNext}
             >
               <Text style={styles.primaryText}>{isLast ? "Quiz'i Bitir" : 'İleri →'}</Text>

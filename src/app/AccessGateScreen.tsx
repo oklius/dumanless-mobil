@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View, Platform } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import Purchases from 'react-native-purchases';
 
 import { fetchEntitlementForEmail } from '../lib/entitlement';
+import { setMembershipStatus } from '../lib/membership';
 import { getSupabase } from '../lib/supabase';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { colors } from '../theme/colors';
@@ -12,15 +14,29 @@ import { typography } from '../theme/typography';
 type Props = NativeStackScreenProps<RootStackParamList, 'Gate'>;
 
 type GateState = 'loading' | 'no-access';
+const DEBUG_LOGS = process.env.EXPO_PUBLIC_DEBUG_LOGS === 'true';
+const RC_ENTITLEMENT_ID = process.env.EXPO_PUBLIC_RC_ENTITLEMENT_ID ?? 'pro';
 
-export default function AccessGateScreen({ navigation }: Props) {
+const redactEmail = (value?: string | null) => {
+  if (!value) return 'unknown';
+  const [name, domain] = value.split('@');
+  if (!domain) return 'unknown';
+  const safeName = name.length <= 2 ? `${name[0] ?? ''}*` : `${name.slice(0, 2)}***`;
+  return `${safeName}@${domain}`;
+};
+
+export default function AccessGateScreen({ navigation, route }: Props) {
   const [state, setState] = useState<GateState>('loading');
+  const forcedPaywall = Boolean(route.params?.forcedPaywall);
 
   const checkAccess = useCallback(async () => {
     setState('loading');
     try {
       const client = getSupabase();
       if (!client) {
+        if (DEBUG_LOGS) {
+          console.warn('AccessGate: Supabase client missing');
+        }
         Alert.alert('Hata', 'Uygulama yapılandırması eksik. Lütfen tekrar deneyin.');
         setState('no-access');
         return;
@@ -32,7 +48,17 @@ export default function AccessGateScreen({ navigation }: Props) {
       }
 
       const session = data.session;
+      if (DEBUG_LOGS) {
+        console.log('AccessGate: session check', {
+          hasSession: Boolean(session),
+          email: redactEmail(session?.user?.email ?? null),
+          userId: session?.user?.id ?? null,
+        });
+      }
       if (!session) {
+        if (DEBUG_LOGS) {
+          console.warn('AccessGate: no session, redirecting to Welcome');
+        }
         navigation.reset({
           index: 0,
           routes: [{ name: 'Welcome' }],
@@ -46,7 +72,40 @@ export default function AccessGateScreen({ navigation }: Props) {
       }
 
       const entitlement = await fetchEntitlementForEmail(email);
-      if (entitlement?.status === 'active') {
+      const webActive = entitlement?.status === 'active';
+      let rcActive = false;
+      let rcEntitlements: string[] = [];
+
+      if (Platform.OS === 'ios') {
+        try {
+          const customerInfo = await Purchases.getCustomerInfo();
+          rcEntitlements = Object.keys(customerInfo.entitlements.active ?? {});
+          rcActive = Boolean(customerInfo.entitlements.active?.[RC_ENTITLEMENT_ID]);
+        } catch (error) {
+          if (DEBUG_LOGS) {
+            console.warn('AccessGate: RevenueCat getCustomerInfo failed', error);
+          }
+        }
+      }
+
+      const isActiveMember = webActive || rcActive;
+      await setMembershipStatus({
+        isActive: isActiveMember,
+        source: webActive ? 'web' : rcActive ? 'revenuecat' : 'none',
+      });
+      if (DEBUG_LOGS) {
+        console.log('AccessGate: entitlement result', {
+          email: redactEmail(email),
+          status: entitlement?.status ?? null,
+          plan: entitlement?.plan ?? null,
+          rcEntitlements,
+          rcActive,
+        });
+      }
+      if (isActiveMember) {
+        if (DEBUG_LOGS) {
+          console.log('AccessGate: entitlement active, redirecting to Hub');
+        }
         navigation.reset({
           index: 0,
           routes: [{ name: 'Hub' }],
@@ -54,13 +113,34 @@ export default function AccessGateScreen({ navigation }: Props) {
         return;
       }
 
-      setState('no-access');
+      if (forcedPaywall) {
+        if (DEBUG_LOGS) {
+          console.warn('AccessGate: forced paywall for non-member');
+        }
+        setState('no-access');
+        return;
+      }
+
+      if (DEBUG_LOGS) {
+        console.log('AccessGate: non-member, allowing Hub');
+      }
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Hub' }],
+      });
     } catch (error) {
+      if (DEBUG_LOGS) {
+        if (error instanceof Error) {
+          console.error('AccessGate failed', { message: error.message, stack: error.stack });
+        } else {
+          console.error('AccessGate failed', { error });
+        }
+      }
       const message = error instanceof Error ? error.message : 'Bir hata oluştu.';
       Alert.alert('Hata', message);
       setState('no-access');
     }
-  }, [navigation]);
+  }, [forcedPaywall, navigation]);
 
   useEffect(() => {
     void checkAccess();
@@ -91,6 +171,19 @@ export default function AccessGateScreen({ navigation }: Props) {
         <Pressable style={styles.secondaryButton} onPress={checkAccess}>
           <Text style={styles.secondaryText}>Tekrar dene</Text>
         </Pressable>
+        {forcedPaywall ? (
+          <Pressable
+            style={styles.secondaryButton}
+            onPress={() =>
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Hub' }],
+              })
+            }
+          >
+            <Text style={styles.secondaryText}>Devam et</Text>
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );

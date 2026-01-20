@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 import days from './days';
+import { recordNonMemberAction } from './paywallGate';
 
 const STORAGE_KEY = 'dumanless:journey';
 const WEEK_DAYS = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
@@ -49,6 +50,7 @@ type JourneyValue = {
     timeSavedMinutes: number;
     lifeGainedMinutes: number;
   };
+  paywallTriggerId: number;
   markDayComplete: (day: number) => void;
   logTrigger: (log: Omit<TriggerLog, 'createdAt'>) => void;
   logCrisisWin: () => void;
@@ -124,6 +126,7 @@ function calculateStats(elapsedDays: number) {
 export function JourneyProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<JourneyState>(defaultState);
   const [hydrated, setHydrated] = useState(false);
+  const [paywallTriggerId, setPaywallTriggerId] = useState(0);
 
   useEffect(() => {
     const load = async () => {
@@ -162,6 +165,14 @@ export function JourneyProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => updater(prev));
   };
 
+  const handleNonMemberAction = (reason: string) => {
+    void recordNonMemberAction(reason).then((shouldTrigger) => {
+      if (shouldTrigger) {
+        setPaywallTriggerId((prev) => prev + 1);
+      }
+    });
+  };
+
   const markDayComplete = (day: number) => {
     if (day > currentDay) return;
     updateState((prev) => {
@@ -176,6 +187,7 @@ export function JourneyProvider({ children }: { children: React.ReactNode }) {
       triggerLogs: [...prev.triggerLogs, { ...log, createdAt: new Date().toISOString() }],
       trackerCounts: { ...prev.trackerCounts, urges: prev.trackerCounts.urges + 1 },
     }));
+    handleNonMemberAction('trigger');
   };
 
   const logCrisisWin = () => {
@@ -183,6 +195,7 @@ export function JourneyProvider({ children }: { children: React.ReactNode }) {
       ...prev,
       trackerCounts: { ...prev.trackerCounts, wins: prev.trackerCounts.wins + 1 },
     }));
+    handleNonMemberAction('crisisWin');
   };
 
   const logSmoked = () => {
@@ -190,6 +203,7 @@ export function JourneyProvider({ children }: { children: React.ReactNode }) {
       ...prev,
       trackerCounts: { ...prev.trackerCounts, smoked: prev.trackerCounts.smoked + 1 },
     }));
+    handleNonMemberAction('smoked');
   };
 
   const addNote = (text: string) => {
@@ -198,6 +212,7 @@ export function JourneyProvider({ children }: { children: React.ReactNode }) {
       notes: [...prev.notes, { text, createdAt: new Date().toISOString() }],
       trackerCounts: { ...prev.trackerCounts, notes: prev.trackerCounts.notes + 1 },
     }));
+    handleNonMemberAction('note');
   };
 
   const incrementBreath = () => {
@@ -205,6 +220,7 @@ export function JourneyProvider({ children }: { children: React.ReactNode }) {
       ...prev,
       trackerCounts: { ...prev.trackerCounts, breath: prev.trackerCounts.breath + 1 },
     }));
+    handleNonMemberAction('breath');
   };
 
   const setMoodForDay = (day: string, mood: MoodState) => {
@@ -219,6 +235,7 @@ export function JourneyProvider({ children }: { children: React.ReactNode }) {
       ...prev,
       dailyTasks: { ...prev.dailyTasks, [task]: !prev.dailyTasks[task] },
     }));
+    handleNonMemberAction(`task:${task}`);
   };
 
   const resetDailyTasks = () => {
@@ -243,6 +260,7 @@ export function JourneyProvider({ children }: { children: React.ReactNode }) {
     currentDay,
     elapsed,
     stats,
+    paywallTriggerId,
     markDayComplete,
     logTrigger,
     logCrisisWin,

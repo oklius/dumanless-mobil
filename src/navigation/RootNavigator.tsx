@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AccessGateScreen from '../app/AccessGateScreen';
 import DayScreen from '../app/DayScreen';
 import LoginScreen from '../app/LoginScreen';
+import PaywallScreen from '../app/PaywallScreen';
 import QuizResultScreen from '../app/QuizResultScreen';
 import QuizScreen from '../app/QuizScreen';
 import ProgressScreen from '../app/ProgressScreen';
@@ -13,9 +14,10 @@ import WelcomeScreen from '../app/WelcomeScreen';
 import AppTabs from './AppTabs';
 
 export type RootStackParamList = {
-  Gate: undefined;
+  Gate: { forcedPaywall?: boolean } | undefined;
   Welcome: undefined;
-  Login: undefined;
+  Login: { prefillEmail?: string; codeSent?: boolean } | undefined;
+  Paywall: undefined;
   Quiz: undefined;
   QuizResult: { answered?: number; answers?: Record<string, string[]> } | undefined;
   Hub: undefined;
@@ -34,6 +36,7 @@ export default function RootNavigator() {
       <Stack.Screen name="Gate" component={AccessGateScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Giriş Yap' }} />
+      <Stack.Screen name="Paywall" component={PaywallScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Quiz" component={QuizScreen} options={{ title: 'Quiz' }} />
       <Stack.Screen name="QuizResult" component={QuizResultScreen} options={{ title: 'Quiz Sonucu' }} />
       <Stack.Screen name="Hub" component={AppTabs} options={{ headerShown: false }} />

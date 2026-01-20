@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -11,13 +11,29 @@ import { typography } from '../theme/typography';
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const DEBUG_LOGS = process.env.EXPO_PUBLIC_DEBUG_LOGS === 'true';
 
-export default function LoginScreen({ navigation }: Props) {
-  const [email, setEmail] = useState('');
+const redactEmail = (value: string) => {
+  const [name, domain] = value.split('@');
+  if (!domain) return 'unknown';
+  const safeName = name.length <= 2 ? `${name[0] ?? ''}*` : `${name.slice(0, 2)}***`;
+  return `${safeName}@${domain}`;
+};
+
+export default function LoginScreen({ navigation, route }: Props) {
+  const initialEmail = route.params?.prefillEmail ?? '';
+  const initialCodeSent = Boolean(route.params?.codeSent);
+  const [email, setEmail] = useState(initialEmail);
   const [code, setCode] = useState('');
-  const [codeSent, setCodeSent] = useState(false);
+  const [codeSent, setCodeSent] = useState(initialCodeSent);
   const [isSending, setIsSending] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+
+  useEffect(() => {
+    if (initialCodeSent) {
+      setCodeSent(true);
+    }
+  }, [initialCodeSent]);
 
   const handleSendCode = async () => {
     if (isSending) return;
@@ -29,22 +45,49 @@ export default function LoginScreen({ navigation }: Props) {
 
     const client = getSupabase();
     if (!client) {
+      if (DEBUG_LOGS) {
+        console.warn('Login send code: Supabase client missing');
+      }
       Alert.alert('Hata', 'Uygulama yapılandırması eksik. Lütfen tekrar deneyin.');
       return;
     }
 
     setIsSending(true);
     try {
+      if (DEBUG_LOGS) {
+        const { data, error } = await client.auth.getSession();
+        console.log('Login send code: session before OTP', {
+          email: redactEmail(normalizedEmail),
+          hasSession: Boolean(data?.session),
+          sessionEmail: redactEmail(data?.session?.user?.email ?? ''),
+          sessionError: error?.message ?? null,
+          shouldCreateUser: true,
+          emailRedirectTo: null,
+        });
+      }
       const { error } = await client.auth.signInWithOtp({
         email: normalizedEmail,
         options: { shouldCreateUser: true },
       });
+      if (DEBUG_LOGS) {
+        console.log('Login send code: OTP response', {
+          email: redactEmail(normalizedEmail),
+          error: error?.message ?? null,
+        });
+      }
       if (error) {
         throw new Error(error.message);
       }
       setCodeSent(true);
       Alert.alert('Kod gönderildi', 'E-posta adresini kontrol et.');
     } catch (error) {
+      if (DEBUG_LOGS) {
+        if (error instanceof Error) {
+          console.error('Login send code failed', { message: error.message, stack: error.stack });
+        } else {
+          console.error('Login send code failed', { error });
+        }
+      }
       const message = error instanceof Error ? error.message : 'Kod gönderilemedi.';
       Alert.alert('Hata', message);
     } finally {
@@ -67,17 +110,35 @@ export default function LoginScreen({ navigation }: Props) {
 
     const client = getSupabase();
     if (!client) {
+      if (DEBUG_LOGS) {
+        console.warn('Login verify code: Supabase client missing');
+      }
       Alert.alert('Hata', 'Uygulama yapılandırması eksik. Lütfen tekrar deneyin.');
       return;
     }
 
     setIsVerifying(true);
     try {
+      if (DEBUG_LOGS) {
+        const { data, error } = await client.auth.getSession();
+        console.log('Login verify code: session before verify', {
+          email: redactEmail(normalizedEmail),
+          hasSession: Boolean(data?.session),
+          sessionEmail: redactEmail(data?.session?.user?.email ?? ''),
+          sessionError: error?.message ?? null,
+        });
+      }
       const { error } = await client.auth.verifyOtp({
         email: normalizedEmail,
         token: normalizedCode,
         type: 'email',
       });
+      if (DEBUG_LOGS) {
+        console.log('Login verify code: OTP verify response', {
+          email: redactEmail(normalizedEmail),
+          error: error?.message ?? null,
+        });
+      }
       if (error) {
         throw new Error(error.message);
       }
@@ -87,6 +148,13 @@ export default function LoginScreen({ navigation }: Props) {
         routes: [{ name: 'Gate' }],
       });
     } catch (error) {
+      if (DEBUG_LOGS) {
+        if (error instanceof Error) {
+          console.error('Login verify code failed', { message: error.message, stack: error.stack });
+        } else {
+          console.error('Login verify code failed', { error });
+        }
+      }
       const message = error instanceof Error ? error.message : 'Giriş başarısız.';
       Alert.alert('Hata', message);
     } finally {

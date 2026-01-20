@@ -6,6 +6,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 
 import Screen from '../components/Screen';
+import { getMembershipStatus } from '../lib/membership';
+import { getSupabase } from '../lib/supabase';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -14,18 +16,21 @@ const PREFS_KEY = 'dumanless:profile-prefs';
 
 type Prefs = {
   notifications: boolean;
-  reminderTime: string;
 };
 
 const defaultPrefs: Prefs = {
   notifications: true,
-  reminderTime: '09:00',
 };
 
 export default function ProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const [prefs, setPrefs] = useState<Prefs>(defaultPrefs);
   const [hydrated, setHydrated] = useState(false);
+  const [membership, setMembership] = useState<Awaited<ReturnType<typeof getMembershipStatus>>>(null);
+  const [membershipLoaded, setMembershipLoaded] = useState(false);
+  const [displayName, setDisplayName] = useState('Dumanless Kullanıcısı');
+  const [displayEmail, setDisplayEmail] = useState('—');
+  const [avatarText, setAvatarText] = useState('DK');
 
   useEffect(() => {
     AsyncStorage.getItem(PREFS_KEY)
@@ -36,6 +41,55 @@ export default function ProfileScreen() {
       .finally(() => setHydrated(true));
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadProfile = async () => {
+      const entries = await AsyncStorage.multiGet(['leadName', 'leadSurname', 'leadEmail']);
+      const leadName = entries[0]?.[1]?.trim() ?? '';
+      const leadSurname = entries[1]?.[1]?.trim() ?? '';
+      const leadEmail = entries[2]?.[1]?.trim() ?? '';
+      const client = getSupabase();
+      const { data } = client ? await client.auth.getSession() : { data: null };
+      const sessionEmail = data?.session?.user?.email ?? '';
+      const email = leadEmail || sessionEmail;
+      const name =
+        leadName && leadSurname
+          ? `${leadName} ${leadSurname}`.trim()
+          : email
+            ? email.split('@')[0] ?? 'Dumanless Kullanıcısı'
+            : 'Dumanless Kullanıcısı';
+      const initialsSource = leadName || leadSurname ? `${leadName}${leadSurname}` : email;
+      const initials = initialsSource
+        ? initialsSource
+            .split(' ')
+            .join('')
+            .slice(0, 2)
+            .toUpperCase()
+        : 'DK';
+      if (isMounted) {
+        setDisplayName(name || 'Dumanless Kullanıcısı');
+        setDisplayEmail(email || '—');
+        setAvatarText(initials || 'DK');
+      }
+    };
+
+    const loadMembership = async () => {
+      const status = await getMembershipStatus();
+      if (isMounted) {
+        setMembership(status);
+        setMembershipLoaded(true);
+      }
+    };
+
+    void loadProfile();
+    void loadMembership();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const persist = (next: Prefs) => {
     setPrefs(next);
     AsyncStorage.setItem(PREFS_KEY, JSON.stringify(next)).catch(() => {});
@@ -43,13 +97,6 @@ export default function ProfileScreen() {
 
   const toggleNotifications = () => {
     persist({ ...prefs, notifications: !prefs.notifications });
-  };
-
-  const cycleReminder = () => {
-    const options = ['08:00', '09:00', '10:00', '18:00'];
-    const idx = options.indexOf(prefs.reminderTime);
-    const next = options[(idx + 1) % options.length];
-    persist({ ...prefs, reminderTime: next });
   };
 
   const handleSupport = () => {
@@ -63,6 +110,35 @@ export default function ProfileScreen() {
     ]);
   };
 
+  const handleSignOut = async () => {
+    const client = getSupabase();
+    if (!client) {
+      Alert.alert('Hata', 'Uygulama yapılandırması eksik. Lütfen tekrar deneyin.');
+      return;
+    }
+    try {
+      const { error } = await client.auth.signOut();
+      if (error) {
+        throw new Error(error.message);
+      }
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Welcome' }],
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Çıkış yapılamadı.';
+      Alert.alert('Hata', message);
+    }
+  };
+
+  const membershipLabel = membershipLoaded
+    ? membership?.isActive
+      ? 'Aktif'
+      : 'Pasif'
+    : '—';
+  const membershipTone = membership?.isActive ? 'success' : undefined;
+  const showPaywallTest = membershipLoaded && !membership?.isActive;
+
   return (
     <Screen>
       <View style={styles.header}>
@@ -74,17 +150,17 @@ export default function ProfileScreen() {
         <Text style={styles.sectionTitle}>Üyelik</Text>
         <View style={styles.profileRow}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>DK</Text>
+            <Text style={styles.avatarText}>{avatarText}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.name}>Dumanless Kullanıcısı</Text>
-            <Text style={styles.email}>user@dumanless.com</Text>
+            <Text style={styles.name}>{displayName}</Text>
+            <Text style={styles.email}>{displayEmail}</Text>
             <Text style={styles.meta}>Üyelik ID: DL-10293</Text>
           </View>
         </View>
         <View style={styles.badgeRow}>
           <Badge label="60 Günlük Program" />
-          <Badge label="Aktif" tone="success" />
+          <Badge label={membershipLabel} tone={membershipTone} />
         </View>
       </View>
 
@@ -94,14 +170,6 @@ export default function ProfileScreen() {
           label="Bildirimler"
           valueComponent={
             <Switch value={prefs.notifications} onValueChange={toggleNotifications} trackColor={{ true: colors.accent }} />
-          }
-        />
-        <SettingRow
-          label="Günlük hatırlatma saati"
-          valueComponent={
-            <Pressable onPress={cycleReminder}>
-              <Text style={styles.settingValue}>{prefs.reminderTime}</Text>
-            </Pressable>
           }
         />
         <SettingRow label="Dil" valueComponent={<Text style={styles.settingValue}>Türkçe</Text>} />
@@ -120,8 +188,16 @@ export default function ProfileScreen() {
         <Pressable style={styles.primary} onPress={() => Alert.alert('Üyelik yönetimi', 'Yakında eklenecek.')}>
           <Text style={styles.primaryText}>Üyeliği yönet</Text>
         </Pressable>
+        {showPaywallTest ? (
+          <Pressable style={styles.primary} onPress={() => navigation.navigate('Paywall')}>
+            <Text style={styles.primaryText}>Paywall test</Text>
+          </Pressable>
+        ) : null}
         <Pressable style={styles.danger} onPress={confirmCancel}>
           <Text style={styles.dangerText}>Üyeliği iptal et</Text>
+        </Pressable>
+        <Pressable style={styles.danger} onPress={handleSignOut}>
+          <Text style={styles.dangerText}>Çıkış yap</Text>
         </Pressable>
       </View>
 

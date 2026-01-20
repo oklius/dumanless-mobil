@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import QuizCard from '../components/QuizCard';
 import RemoteIllustration from '../components/RemoteIllustration';
@@ -16,6 +16,14 @@ import { typography } from '../theme/typography';
 type Props = NativeStackScreenProps<RootStackParamList, 'QuizResult'>;
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const DEBUG_LOGS = process.env.EXPO_PUBLIC_DEBUG_LOGS === 'true';
+
+const redactEmail = (value: string) => {
+  const [name, domain] = value.split('@');
+  if (!domain) return 'unknown';
+  const safeName = name.length <= 2 ? `${name[0] ?? ''}*` : `${name.slice(0, 2)}***`;
+  return `${safeName}@${domain}`;
+};
 
 export default function QuizResultScreen({ navigation, route }: Props) {
   const sparkUri = resolveAssetUri('/illustrations/spark.svg');
@@ -48,12 +56,26 @@ export default function QuizResultScreen({ navigation, route }: Props) {
 
     const client = getSupabase();
     if (!client) {
+      if (DEBUG_LOGS) {
+        console.warn('QuizResult submit: Supabase client missing');
+      }
       Alert.alert('Hata', 'Uygulama yapılandırması eksik. Lütfen tekrar deneyin.');
       return;
     }
 
     setIsSubmitting(true);
     try {
+      if (DEBUG_LOGS) {
+        const { data, error } = await client.auth.getSession();
+        console.log('QuizResult submit: session before insert', {
+          email: redactEmail(normalizedEmail),
+          hasSession: Boolean(data?.session),
+          sessionEmail: redactEmail(data?.session?.user?.email ?? ''),
+          sessionError: error?.message ?? null,
+          answersCount: Object.keys(answers).length,
+        });
+        console.log('QuizResult submit: OTP will be requested if no session');
+      }
       const { error } = await client.from('quiz_submissions').insert({
         name: trimmedName,
         surname: trimmedSurname,
@@ -66,15 +88,57 @@ export default function QuizResultScreen({ navigation, route }: Props) {
       if (error) {
         throw new Error(error.message);
       }
+      if (DEBUG_LOGS) {
+        console.log('QuizResult submit: quiz_submissions insert ok', {
+          email: redactEmail(normalizedEmail),
+        });
+      }
 
       await AsyncStorage.setItem('onboardingComplete', 'true');
       await AsyncStorage.setItem('leadEmail', normalizedEmail);
+      await AsyncStorage.setItem('leadName', trimmedName);
+      await AsyncStorage.setItem('leadSurname', trimmedSurname);
 
+      const { data: sessionData, error: sessionError } = await client.auth.getSession();
+      if (DEBUG_LOGS) {
+        console.log('QuizResult submit: session after insert', {
+          hasSession: Boolean(sessionData?.session),
+          sessionError: sessionError?.message ?? null,
+        });
+      }
+      if (!sessionData?.session) {
+        const { error: otpError } = await client.auth.signInWithOtp({
+          email: normalizedEmail,
+          options: { shouldCreateUser: true },
+        });
+        if (DEBUG_LOGS) {
+          console.log('QuizResult submit: OTP send response', {
+            email: redactEmail(normalizedEmail),
+            error: otpError?.message ?? null,
+          });
+        }
+        if (otpError) {
+          throw new Error(otpError.message);
+        }
+        navigation.navigate('Login', { prefillEmail: normalizedEmail, codeSent: true });
+        return;
+      }
+
+      if (DEBUG_LOGS) {
+        console.log('QuizResult submit: navigation reset to Gate');
+      }
       navigation.reset({
         index: 0,
         routes: [{ name: 'Gate' }],
       });
     } catch (error) {
+      if (DEBUG_LOGS) {
+        if (error instanceof Error) {
+          console.error('QuizResult submit failed', { message: error.message, stack: error.stack });
+        } else {
+          console.error('QuizResult submit failed', { error });
+        }
+      }
       const message = error instanceof Error ? error.message : 'Bir hata oluştu.';
       Alert.alert('Hata', message);
     } finally {
@@ -83,8 +147,16 @@ export default function QuizResultScreen({ navigation, route }: Props) {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-      <QuizCard>
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <QuizCard>
         <View style={styles.header}>
           <View style={styles.illustrationWrap}>
             {sparkUri ? (
@@ -165,12 +237,17 @@ export default function QuizResultScreen({ navigation, route }: Props) {
         >
           <Text style={styles.primaryText}>{isSubmitting ? 'Gönderiliyor...' : 'Devam et'}</Text>
         </Pressable>
-      </QuizCard>
-    </ScrollView>
+        </QuizCard>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   container: {
     padding: spacing.xxxl,
     paddingBottom: spacing.huge,
